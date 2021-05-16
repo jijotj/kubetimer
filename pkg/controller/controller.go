@@ -40,7 +40,6 @@ type Event struct {
 
 // Controller object
 type Controller struct {
-	logger       *zap.SugaredLogger
 	clientset    kubernetes.Interface
 	queue        workqueue.RateLimitingInterface
 	informer     cache.SharedIndexInformer
@@ -97,26 +96,7 @@ func newResourceController(client kubernetes.Interface, eventHandler handler.Han
 			newEvent.key, err = cache.MetaNamespaceKeyFunc(obj)
 			newEvent.eventType = "create"
 			newEvent.resourceType = resourceType
-			zap.S().With("pkg", "kubewatch-"+resourceType).Infof("Processing add to %v: %s", resourceType, newEvent.key)
-			if err == nil {
-				queue.Add(newEvent)
-			}
-		},
-		UpdateFunc: func(old, new interface{}) {
-			newEvent.key, err = cache.MetaNamespaceKeyFunc(old)
-			newEvent.eventType = "update"
-			newEvent.resourceType = resourceType
-			zap.S().With("pkg", "kubewatch-"+resourceType).Infof("Processing update to %v: %s", resourceType, newEvent.key)
-			if err == nil {
-				queue.Add(newEvent)
-			}
-		},
-		DeleteFunc: func(obj interface{}) {
-			newEvent.key, err = cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
-			newEvent.eventType = "delete"
-			newEvent.resourceType = resourceType
-			newEvent.namespace = k8s.GetObjectMetaData(obj).Namespace
-			zap.S().With("pkg", "kubewatch-"+resourceType).Infof("Processing delete to %v: %s", resourceType, newEvent.key)
+			zap.S().With("pkg", "kubewatch-"+resourceType).Debug("Processing add to %v: %s", resourceType, newEvent.key)
 			if err == nil {
 				queue.Add(newEvent)
 			}
@@ -124,7 +104,6 @@ func newResourceController(client kubernetes.Interface, eventHandler handler.Han
 	})
 
 	return &Controller{
-		logger:       zap.S(),
 		clientset:    client,
 		informer:     informer,
 		queue:        queue,
@@ -142,17 +121,17 @@ func (c *Controller) Run(stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	defer c.queue.ShutDown()
 
-	c.logger.Info("Starting kubewatch controller")
+	zap.S().Info("Starting kubewatch controller")
 	serverStartTime = time.Now().Local()
 
 	go c.informer.Run(stopCh)
 
 	if !cache.WaitForCacheSync(stopCh, c.HasSynced) {
-		utilruntime.HandleError(fmt.Errorf("Timed out waiting for caches to sync"))
+		utilruntime.HandleError(fmt.Errorf("timed out waiting for caches to sync"))
 		return
 	}
 
-	c.logger.Info("Kubewatch controller synced and ready")
+	zap.S().Info("Kubewatch controller synced and ready")
 
 	wait.Until(c.runWorker, time.Second, stopCh)
 }
@@ -175,11 +154,11 @@ func (c *Controller) processNextItem() bool {
 		// No error, reset the ratelimit counters
 		c.queue.Forget(newEvent)
 	} else if c.queue.NumRequeues(newEvent) < maxRetries {
-		c.logger.Errorf("Error processing %s (will retry): %v", newEvent.(Event).key, err)
+		zap.S().Debugf("Error processing %s (will retry): %v", newEvent.(Event).key, err)
 		c.queue.AddRateLimited(newEvent)
 	} else {
 		// err != nil and too many retries
-		c.logger.Errorf("Error processing %s (giving up): %v", newEvent.(Event).key, err)
+		zap.S().Errorf("Error processing %s (giving up): %v", newEvent.(Event).key, err)
 		c.queue.Forget(newEvent)
 		utilruntime.HandleError(err)
 	}

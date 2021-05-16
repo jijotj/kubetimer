@@ -6,6 +6,7 @@ import (
 	"go.uber.org/zap"
 	apps_v1 "k8s.io/api/apps/v1"
 	batch_v1 "k8s.io/api/batch/v1"
+	batch_v1beta1 "k8s.io/api/batch/v1beta1"
 	api_v1 "k8s.io/api/core/v1"
 	ext_v1beta1 "k8s.io/api/extensions/v1beta1"
 	rbac_v1beta1 "k8s.io/api/rbac/v1beta1"
@@ -69,6 +70,8 @@ func GetObjectMetaData(obj interface{}) (objectMeta meta_v1.ObjectMeta) {
 	case *api_v1.Pod:
 		objectMeta = object.ObjectMeta
 	case *batch_v1.Job:
+		objectMeta = object.ObjectMeta
+	case *batch_v1beta1.CronJob:
 		objectMeta = object.ObjectMeta
 	case *api_v1.PersistentVolume:
 		objectMeta = object.ObjectMeta

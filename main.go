@@ -1,11 +1,13 @@
 package main
 
 import (
+	"net/http"
+
 	"github.com/hotstar/kubetimer/pkg/client"
 	"github.com/hotstar/kubetimer/pkg/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"net/http"
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -14,10 +16,19 @@ func main() {
 }
 
 func startPromServer() {
+	logger, err := zap.NewProduction()
+	if err != nil {
+		panic(1)
+	}
+	defer logger.Sync()
+
+	undo := zap.ReplaceGlobals(logger)
+	defer undo()
+
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(metrics.PodContainersReadyTime)
 	http.Handle("/metrics", promhttp.HandlerFor(metrics.NewRegistry(), promhttp.HandlerOpts{}))
-	err := http.ListenAndServe(":8080", nil)
+	err = http.ListenAndServe(":8080", nil)
 	if err != nil {
 		panic(1)
 	}
