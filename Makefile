@@ -1,5 +1,7 @@
 PORT ?= 80
 NAME = kubetimer
+REPO_NAME = jijothomasjohn
+SVC_VERSION = v0.1
 
 .PHONY: all
 all: lint build
@@ -15,6 +17,11 @@ run:
 .PHONY: build
 build:
 	docker build -f ./Dockerfile --build-arg PORT=$(PORT) -t $(NAME) .
+
+.PHONY: publish
+publish:
+	docker tag $(NAME) $(REPO_NAME)/$(NAME):$(SVC_VERSION)
+	docker push $(REPO_NAME)/kubetimer:$(SVC_VERSION)
 
 .PHONY: fix
 fix:

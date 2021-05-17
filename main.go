@@ -28,6 +28,7 @@ func startPromServer() {
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(metrics.PodContainersReadyTime)
 	http.Handle("/metrics", promhttp.HandlerFor(metrics.NewRegistry(), promhttp.HandlerOpts{}))
+	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {w.WriteHeader(http.StatusOK)})
 	err = http.ListenAndServe(":8080", nil)
 	if err != nil {
 		panic(1)
